@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      initContainers:
+      - name: wait-for-db
+        image: postgres
+        command:
+          - sh
+          - -c
+          - |
+            until pg_isready -h "$POSTGRES_HOST" -p "$PGPORT" -U "$POSTGRES_USER"; do echo "Waiting for DB..."; sleep 3; done
+        envFrom:
+          - secretRef:
+              name: pg-credentials
+
+      containers:
+      - name: worker
+        image: ghcr.io/sandipgangdhar/voting-app-worker:latest
+        env:
+        - name: REDIS_HOST
+          value: redis
+        envFrom:
+          - secretRef:
+              name: pg-credentials

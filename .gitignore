@@ -1,0 +1,30 @@
+# .gitignore
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+terraform.tfplan
+.plan
+.terraform.lock.hcl
+
+# Sensitive or generated files
+kubeconfig
+*.pem
+*.key
+*.env
+.envrc
+secrets.yaml
+
+# Python cache (if any)
+__pycache__/
+*.pyc
+
+# VSCode or IDE files
+.vscode/
+.idea/
+
+# OS metadata
+.DS_Store
