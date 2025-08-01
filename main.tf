@@ -114,6 +114,33 @@ resource "null_resource" "install_metrics_server" {
   depends_on = [local_file.kubeconfig]
 }
 
+resource "null_resource" "patch_metrics_server" {
+  provisioner "local-exec" {
+    command = <<EOT
+kubectl -n kube-system patch deployment metrics-server --type=json -p='[
+  {"op": "replace", "path": "/spec/template/spec/containers/0/args/1", "value": "--secure-port=4443"},
+  {"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/ports/0/containerPort", "value": 4443},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/port", "value": 4443},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/port", "value": 4443}
+]'
+kubectl -n kube-system rollout restart deployment metrics-server
+EOT
+
+    environment = {
+      KUBECONFIG = "${path.module}/kubeconfig"
+    }
+  }
+
+  triggers = {
+    always_run = timestamp()
+  }
+
+  depends_on = [
+    null_resource.install_metrics_server
+  ]
+}
+
 resource "null_resource" "inject_pg_secret" {
   depends_on = [
     linode_database_postgresql_v2.pg_demo,
@@ -163,7 +190,6 @@ EOT
       filesha256("${path.module}/terraform/voting-app/redis-deployment.yaml"),
       filesha256("${path.module}/terraform/voting-app/services.yaml"),
       filesha256("${path.module}/terraform/voting-app/hpa.yaml"),
-      filesha256("${path.module}/terraform/voting-app/traffic-generator-job.yaml"),
       filesha256("${path.module}/terraform/voting-app/vote-service.yaml"),
       filesha256("${path.module}/terraform/voting-app/result-service.yaml"),
     ])

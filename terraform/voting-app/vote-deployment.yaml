@@ -17,6 +17,13 @@ spec:
         image: dockersamples/examplevotingapp_vote:before
         ports:
         - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
         env:
         - name: REDIS_HOST
           value: redis
