@@ -78,13 +78,13 @@ resource "null_resource" "run_db_init_job" {
     command = <<EOT
 export KUBECONFIG=./kubeconfig
 kubectl delete job db-init-job --ignore-not-found=true
-kubectl apply -f terraform/voting-app/db-init-job.yaml
+kubectl apply -f voting-app/db-init-job.yaml
 kubectl wait --for=condition=complete job/db-init-job --timeout=60s || kubectl logs job/db-init-job
 EOT
   }
 
   triggers = {
-    sha = filesha256("${path.module}/terraform/voting-app/db-init-job.yaml")
+    sha = filesha256("${path.module}/voting-app/db-init-job.yaml")
   }
 }
 
@@ -139,19 +139,19 @@ resource "null_resource" "apply_voting_app_yaml" {
   provisioner "local-exec" {
     command = <<EOT
 export KUBECONFIG=./kubeconfig
-kubectl apply -f terraform/voting-app/
+kubectl apply -f voting-app/
 EOT
   }
   triggers = {
     app_sha = join(",", [
-      filesha256("${path.module}/terraform/voting-app/vote-deployment.yaml"),
-      filesha256("${path.module}/terraform/voting-app/result-deployment.yaml"),
-      filesha256("${path.module}/terraform/voting-app/worker-deployment.yaml"),
-      filesha256("${path.module}/terraform/voting-app/redis-deployment.yaml"),
-      filesha256("${path.module}/terraform/voting-app/services.yaml"),
-      filesha256("${path.module}/terraform/voting-app/hpa.yaml"),
-      filesha256("${path.module}/terraform/voting-app/vote-service.yaml"),
-      filesha256("${path.module}/terraform/voting-app/result-service.yaml"),
+      filesha256("${path.module}/voting-app/vote-deployment.yaml"),
+      filesha256("${path.module}/voting-app/result-deployment.yaml"),
+      filesha256("${path.module}/voting-app/worker-deployment.yaml"),
+      filesha256("${path.module}/voting-app/redis-deployment.yaml"),
+      filesha256("${path.module}/voting-app/services.yaml"),
+      filesha256("${path.module}/voting-app/hpa.yaml"),
+      filesha256("${path.module}/voting-app/vote-service.yaml"),
+      filesha256("${path.module}/voting-app/result-service.yaml"),
     ])
   }
 }

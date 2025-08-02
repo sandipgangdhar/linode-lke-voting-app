@@ -38,13 +38,13 @@ spec:
           - |
             set -e
             echo "🔍 Waiting for DNS resolution..."
-            for i in {1..20}; do
+            for i in {1..50}; do
               if getent hosts "$PGHOST" > /dev/null; then
                 echo "DNS resolved for $PGHOST"
                 break
               fi
               echo "Waiting for DNS to resolve $PGHOST..."
-              sleep 2
+              sleep 5
             done
             
             echo "Checking if database exists..."
