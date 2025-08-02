@@ -1,8 +1,5 @@
-resource "local_file" "kubeconfig" {
-  content              = base64decode(linode_lke_cluster.demo_cluster.kubeconfig)
-  filename             = "${path.module}/kubeconfig"
-  file_permission      = "0777"
-  directory_permission = "0777"
+output "kubeconfig_path" {
+  value = local_file.kubeconfig.filename
 }
 
 output "pg_host" {

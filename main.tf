@@ -35,118 +35,18 @@ resource "linode_database_postgresql_v2" "pg_demo" {
   allow_list   = ["0.0.0.0/0"]
 }
 
-resource "null_resource" "create_voting_db" {
-  depends_on = [
-    linode_database_postgresql_v2.pg_demo
-  ]
-
-  provisioner "local-exec" {
-    command = <<EOT
-export PGPASSWORD="${linode_database_postgresql_v2.pg_demo.root_password}"
-for i in {1..30}; do
-  if nslookup "$DB_HOST" > /dev/null; then
-    echo "DNS resolved for $DB_HOST"
-    break
-  fi
-  echo "Waiting for DNS to resolve $DB_HOST..."
-  sleep 5
-done
-if ! psql "host=${linode_database_postgresql_v2.pg_demo.host_primary} port=${linode_database_postgresql_v2.pg_demo.port} user=${linode_database_postgresql_v2.pg_demo.root_username} dbname=defaultdb sslmode=require" -tAc "SELECT 1 FROM pg_database WHERE datname='voting'" | grep -q 1; then
-  psql "host=${linode_database_postgresql_v2.pg_demo.host_primary} port=${linode_database_postgresql_v2.pg_demo.port} user=${linode_database_postgresql_v2.pg_demo.root_username} dbname=defaultdb sslmode=require" -c "CREATE DATABASE voting;"
-else
-  echo "Database 'voting' already exists, skipping creation."
-fi
-EOT
-  }
-
-  triggers = {
-    db_create_trigger = sha256("${linode_database_postgresql_v2.pg_demo.id}")
-  }
-}
-
-resource "null_resource" "create_votes_table" {
-  depends_on = [
-    null_resource.create_voting_db
-  ]
-
-  provisioner "local-exec" {
-    command = <<EOT
-export PGPASSWORD="${linode_database_postgresql_v2.pg_demo.root_password}"
-DB_HOST="${linode_database_postgresql_v2.pg_demo.host_primary}"
-DB_PORT="${linode_database_postgresql_v2.pg_demo.port}"
-DB_USER="${linode_database_postgresql_v2.pg_demo.root_username}"
-DB_NAME="voting"
-
-for i in {1..30}; do
-  if getent hosts "$DB_HOST" > /dev/null; then
-    echo "DNS resolved for $DB_HOST"
-    break
-  fi
-  echo "Waiting for DNS to resolve $DB_HOST..."
-  sleep 5
-done
-
-# Create the 'votes' table if it doesn't exist
-psql "host=$DB_HOST port=$DB_PORT user=$DB_USER dbname=$DB_NAME sslmode=require" -c "CREATE TABLE IF NOT EXISTS votes (
-  id SERIAL PRIMARY KEY,
-  vote VARCHAR(255) NOT NULL
-);"
-EOT
-  }
-
-  triggers = {
-    create_votes_table_trigger = sha256("${linode_database_postgresql_v2.pg_demo.id}")
-  }
-}
-
-resource "null_resource" "install_metrics_server" {
-  provisioner "local-exec" {
-    command = <<EOT
-      export KUBECONFIG=./kubeconfig
-      kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-    EOT
-  }
-
-  triggers = {
-    version = "v0.7.0" # Or a hash
-  }
-
-  depends_on = [local_file.kubeconfig]
-}
-
-resource "null_resource" "patch_metrics_server" {
-  provisioner "local-exec" {
-    command = <<EOT
-kubectl -n kube-system patch deployment metrics-server --type=json -p='[
-  {"op": "replace", "path": "/spec/template/spec/containers/0/args/1", "value": "--secure-port=4443"},
-  {"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"},
-  {"op": "replace", "path": "/spec/template/spec/containers/0/ports/0/containerPort", "value": 4443},
-  {"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/port", "value": 4443},
-  {"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/port", "value": 4443}
-]'
-kubectl -n kube-system rollout restart deployment metrics-server
-EOT
-
-    environment = {
-      KUBECONFIG = "${path.module}/kubeconfig"
-    }
-  }
-
-  triggers = {
-    always_run = timestamp()
-  }
-
-  depends_on = [
-    null_resource.install_metrics_server
-  ]
+resource "local_file" "kubeconfig" {
+  content              = base64decode(linode_lke_cluster.demo_cluster.kubeconfig)
+  filename             = "${path.module}/kubeconfig"
+  file_permission      = "0777"
+  directory_permission = "0777"
 }
 
 resource "null_resource" "inject_pg_secret" {
   depends_on = [
     linode_database_postgresql_v2.pg_demo,
     linode_lke_cluster.demo_cluster,
-    null_resource.create_voting_db,
-    null_resource.create_votes_table
+    local_file.kubeconfig
   ]
 
   provisioner "local-exec" {
@@ -169,11 +69,71 @@ resource "null_resource" "inject_pg_secret" {
   }
 }
 
-resource "null_resource" "apply_voting_app_yaml" {
+resource "null_resource" "run_db_init_job" {
+  depends_on = [
+    null_resource.inject_pg_secret
+  ]
+
+  provisioner "local-exec" {
+    command = <<EOT
+export KUBECONFIG=./kubeconfig
+kubectl delete job db-init-job --ignore-not-found=true
+kubectl apply -f terraform/voting-app/db-init-job.yaml
+kubectl wait --for=condition=complete job/db-init-job --timeout=60s || kubectl logs job/db-init-job
+EOT
+  }
+
+  triggers = {
+    sha = filesha256("${path.module}/terraform/voting-app/db-init-job.yaml")
+  }
+}
+
+resource "null_resource" "install_metrics_server" {
   depends_on = [
     linode_lke_cluster.demo_cluster,
-    null_resource.inject_pg_secret,
-    null_resource.install_metrics_server
+    local_file.kubeconfig
+  ]
+  provisioner "local-exec" {
+    command = <<EOT
+      export KUBECONFIG=./kubeconfig
+      kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+    EOT
+  }
+
+  triggers = {
+    version = "v0.7.0" # Or a hash
+  }
+
+}
+
+resource "null_resource" "patch_metrics_server" {
+  depends_on = [null_resource.install_metrics_server]
+  provisioner "local-exec" {
+    command = <<EOT
+    export KUBECONFIG=./kubeconfig
+kubectl -n kube-system patch deployment metrics-server --type=json -p='[
+  {"op": "replace", "path": "/spec/template/spec/containers/0/args/1", "value": "--secure-port=4443"},
+  {"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/ports/0/containerPort", "value": 4443},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/port", "value": 4443},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/port", "value": 4443}
+]'
+kubectl -n kube-system rollout restart deployment metrics-server
+EOT
+
+  }
+
+  triggers = {
+    always_run = timestamp()
+  }
+
+}
+
+
+resource "null_resource" "apply_voting_app_yaml" {
+  depends_on = [
+    null_resource.run_db_init_job,
+    null_resource.patch_metrics_server
   ]
 
   provisioner "local-exec" {
