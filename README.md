@@ -23,6 +23,20 @@ A complete Terraform-based demo showcasing a scalable Kubernetes Voting App depl
 | 🧩 DB Init Job          | Kubernetes Job to bootstrap DB and tables                   |
 
 ---
+## 🏗️ Architecture
+
+This diagram shows how each component of the Voting App interacts:
+
+![Architecture](https://github.com/kodekloudhub/example-voting-app/raw/master/architecture.png)
+
+- **Vote UI**: Flask app that pushes votes to Redis.
+- **Redis**: Queue that temporarily holds votes.
+- **Worker**: Background process that pulls from Redis and writes to PostgreSQL.
+- **Result UI**: Displays real-time vote counts from PostgreSQL.
+- **PostgreSQL**: Linode Managed Database used as a persistent store.
+- **HPA**: Automatically scales components based on CPU usage.
+
+---
 
 ## 📁 Project Structure
 
