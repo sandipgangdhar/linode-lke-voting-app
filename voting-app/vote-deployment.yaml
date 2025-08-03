@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: vote
-        image: dockersamples/examplevotingapp_vote:before
+        image: ghcr.io/sandipgangdhar/voting-app-voting:latest
         ports:
         - containerPort: 80
         resources:
