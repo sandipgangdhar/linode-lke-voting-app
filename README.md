@@ -27,7 +27,7 @@ A complete Terraform-based demo showcasing a scalable Kubernetes Voting App depl
 
 This diagram shows how each component of the Voting App interacts:
 
-![Architecture](https://github.com/kodekloudhub/example-voting-app/raw/master/architecture.png)
+![Architecture](https://github.com/kodekloudhub/example-voting-app/blob/master/architecture.excalidraw.png)
 
 - **Vote UI**: Flask app that pushes votes to Redis.
 - **Redis**: Queue that temporarily holds votes.
