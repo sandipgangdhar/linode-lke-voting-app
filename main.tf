@@ -42,6 +42,25 @@ resource "local_file" "kubeconfig" {
   directory_permission = "0777"
 }
 
+resource "null_resource" "install_rbac" {
+  depends_on = [
+    linode_lke_cluster.demo_cluster,
+    local_file.kubeconfig
+  ]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      export KUBECONFIG=./kubeconfig
+      kubectl apply -f ${path.module}/voting-app/rbac.yaml
+    EOT
+    interpreter = ["/bin/bash", "-c"]
+  }
+
+  triggers = {
+    rbac_sha = filesha256("${path.module}/voting-app/rbac.yaml")
+  }
+}
+
 resource "null_resource" "inject_pg_secret" {
   depends_on = [
     linode_database_postgresql_v2.pg_demo,

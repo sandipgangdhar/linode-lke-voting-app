@@ -39,14 +39,3 @@ spec:
         envFrom:
           - secretRef:
               name: pg-credentials
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: result
-spec:
-  selector:
-    app: result
-  ports:
-  - port: 80
-    targetPort: 80

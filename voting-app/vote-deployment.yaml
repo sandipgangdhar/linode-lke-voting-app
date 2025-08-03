@@ -27,14 +27,3 @@ spec:
         env:
         - name: REDIS_HOST
           value: redis
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vote
-spec:
-  selector:
-    app: vote
-  ports:
-  - port: 80
-    targetPort: 80
