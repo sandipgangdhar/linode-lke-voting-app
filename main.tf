@@ -15,15 +15,30 @@ provider "linode" {
   token = var.linode_token
 }
 
-resource "linode_lke_cluster" "demo_cluster" {
-  label       = var.cluster_label
-  region      = var.region
-  k8s_version = var.k8s_version
+#resource "linode_lke_cluster" "demo_cluster" {
+#  label       = var.cluster_label
+#  region      = var.region
+#  k8s_version = var.k8s_version
+#
+#  pool {
+#    type  = "g6-standard-2"
+#    count = 3
+#  }
+#}
 
-  pool {
-    type  = "g6-standard-2"
-    count = 3
-  }
+resource "linode_lke_cluster" "demo_cluster" {
+    label       = var.cluster_label
+    region      = var.region
+    k8s_version = var.k8s_version
+
+    pool {
+        type  = "g6-standard-2"
+
+        autoscaler {
+          min = 3
+          max = 5
+        }
+    }
 }
 
 resource "linode_database_postgresql_v2" "pg_demo" {

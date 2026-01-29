@@ -11,7 +11,7 @@ spec:
       restartPolicy: Never             
       containers:
       - name: db-init
-        image: bitnami/postgresql:15
+        image: postgres:16-alpine
         env:
         - name: PGPASSWORD
           valueFrom:
