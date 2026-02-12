@@ -15,17 +15,6 @@ provider "linode" {
   token = var.linode_token
 }
 
-#resource "linode_lke_cluster" "demo_cluster" {
-#  label       = var.cluster_label
-#  region      = var.region
-#  k8s_version = var.k8s_version
-#
-#  pool {
-#    type  = "g6-standard-2"
-#    count = 3
-#  }
-#}
-
 resource "linode_lke_cluster" "demo_cluster" {
     label       = var.cluster_label
     region      = var.region
