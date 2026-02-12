@@ -11,6 +11,7 @@ terraform.tfplan
 .terraform.lock.hcl
 
 # Sensitive or generated files
+terraform.tfvars
 kubeconfig
 *.pem
 *.key

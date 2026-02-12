@@ -1,6 +1,6 @@
-linode_token = "weferkhgberhjkgbejkbnjklwgmlwegnmkjergnkjregnkjreg"
+linode_token = "sdkgfbkswdbvnkjdsnvkjsdnkjb"
 node_type = "g6-standard-2"
 cluster_label = "voting-app-cluster" 
 region = "in-maa"
-k8s_version = "1.33" 
+k8s_version = "1.34" 
 node_count = 3
